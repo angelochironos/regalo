@@ -82,3 +82,30 @@ if ahora.day == 14:
 # Forzar una recarga en la web cada 10 segundos para actualizar el contador automáticamente
 time.sleep(10)
 st.rerun()
+
+<!-- ESPACIO DE LA FLOR / ÁRBOL INTERACTIVO RESPONSIVO -->
+<div style="margin: 20px 0; position: relative;">
+    <style>
+        @keyframes pulse {
+            0% { transform: scale(1); filter: drop-shadow(0 0 10px rgba(255, 105, 180, 0.6)); }
+            50% { transform: scale(1.05); filter: drop-shadow(0 0 25px rgba(255, 105, 180, 0.9)); }
+            100% { transform: scale(1); filter: drop-shadow(0 0 10px rgba(255, 105, 180, 0.6)); }
+        }
+        
+        /* Tamaño para pantallas grandes de computadora */
+        .cerezo-digital {
+            font-size: 180px; 
+            display: inline-block;
+            animation: pulse 2s infinite ease-in-out;
+            cursor: pointer;
+        }
+
+        /* 📱 Tamaño adaptado automáticamente para celulares */
+        @media (max-width: 768px) {
+            .cerezo-digital {
+                font-size: 110px; /* Evita que se salga de la pantalla del móvil */
+            }
+        }
+    </style>
+    <span class="cerezo-digital">🌸</span>
+</div>
