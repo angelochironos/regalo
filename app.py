@@ -1,51 +1,118 @@
-import streamlit as st
-import datetime
-from dateutil.relativedelta import relativedelta
+import pygame
+import random
+import sys
 
-# --- CONFIGURACIÓN DE LA PÁGINA ---
-st.set_page_config(page_title="Para Mi Novia", page_icon="🌹", layout="centered")
+# Inicialización de Pygame
+pygame.init()
 
-# --- CONFIGURACIÓN DE TU RELACIÓN ---
-# ⚠️ CAMBIA ESTO por el año, mes y día exactos en que empezaron
-FECHA_INICIO = datetime.date(2025, 1, 14)  
+# Configuración de pantalla (Pantalla completa o ventana gigante)
+INFO = pygame.display.Info()
+ANCHO, ALTO = INFO.current_w, INFO.current_h
+pantalla = pygame.display.set_mode((ANCHO, ALTO), pygame.FULLSCREEN)
+pygame.display.set_caption("Contador Cerezo Gigante")
 
-# --- CÁLCULOS DEL TIEMPO ---
-hoy = datetime.date.today()
+# Paleta de Colores
+NEGRO = (10, 10, 15)
+BLANCO = (255, 255, 255)
+MARRON_TRONCO = (54, 38, 27)
+ROSA_HOJA = (255, 183, 197)
+ROSA_FOSFORO = (255, 105, 180)
 
-# Calculamos la diferencia exacta en meses y días
-diferencia = relativedelta(hoy, FECHA_INICIO)
-meses_totales = (diferencia.years * 12) + diferencia.months
+# Configuración de Reloj e Historial de Tiempo
+reloj = pygame.time.Clock()
+tiempo_inicial = pygame.time.get_ticks()
+ultimo_segundo_registrado = 0
 
-# Determinar el tamaño de la flor (Crece un 15% por cada mes cumplido)
-tamano_flor = 100 + (meses_totales * 15) 
+# Variables del Árbol y las Hojas
+hojas = []
+ramas_posiciones = []
 
-# Determinar si hoy es día 14
-es_aniversario = (hoy.day == 6)
+def generar_estructura_arbol(x, y, angulo, longitud, grosor):
+    """Genera recursivamente los puntos finales de las ramas para brotar hojas."""
+    if longitud < 15:
+        ramas_posiciones.append((x, y))
+        return
+    
+    # Calcular destino de la rama
+    import math
+    x_destino = x + int(math.cos(math.radians(angulo)) * longitud)
+    y_destino = y - int(math.sin(math.radians(angulo)) * longitud)
+    
+    # Guardar puntos para dibujar el tronco estático después
+    ramas_posiciones.append(((x, y), (x_destino, y_destino), grosor))
+    
+    # Ramificaciones intermitentes
+    nuevo_grosor = max(1, int(grosor * 0.7))
+    generar_estructura_arbol(x_destino, y_destino, angulo - random.randint(15, 30), longitud * 0.75, nuevo_grosor)
+    generar_estructura_arbol(x_destino, y_destino, angulo + random.randint(15, 30), longitud * 0.75, nuevo_grosor)
 
-# --- DISEÑO DE LA PÁGINA ---
-st.title("💖 Para la mujer de mi vida 💖")
+# Construir el esqueleto inicial del cerezo gigante
+# Base en el centro inferior, longitud inicial de rama de 220 píxeles
+generar_estructura_arbol(ANCHO // 2, ALTO - 100, 90, 220, 22)
 
-# Sección del contador
-st.subheader("Nuestro contador de amor:")
-st.metric(label="Meses Juntos", value=f"{meses_totales} meses")
-st.write(f"Desde el {FECHA_INICIO.strftime('%d/%m/%Y')}, cada día 14 nuestra flor crece más.")
+# Filtrar solo extremos para brotes de hojas iniciales
+puntos_brote = [pos for pos in ramas_posiciones if isinstance(pos, tuple) and not isinstance(pos[0], tuple)]
+lineas_tronco = [linea for linea in ramas_posiciones if isinstance(linea, tuple) and isinstance(linea[0], tuple)]
 
-st.write("---")
+def agregar_hojas():
+    """Añade un lote de hojas nuevas esparcidas cerca de las copas de las ramas."""
+    for _ in range(35):  # Cantidad de hojas nuevas por cada segundo cumplido
+        origen = random.choice(puntos_brote)
+        offset_x = random.randint(-80, 80)
+        offset_y = random.randint(-80, 80)
+        color = random.choice([ROSA_HOJA, ROSA_FOSFORO])
+        tamano_maximo = random.randint(6, 12)
+        hojas.append({
+            "pos": (origen[0] + offset_x, origen[1] + offset_y),
+            "size": 1,
+            "max_size": tamano_maximo,
+            "color": color
+        })
 
-# Efectos especiales si hoy es el día especial
-if es_aniversario:
-    st.balloons()  # Lluvia de globos en la pantalla
-    st.success("🎉 ¡Feliz día 14 mi amor! Hoy nuestra flor ha florecido más 🎉")
+# Bucle principal del software gráfico
+ejecutando = True
+while ejecutando:
+    pantalla.fill(NEGRO)
+    
+    # Captura de eventos del sistema (Salir con ESC)
+    for evento in pygame.event.get():
+        if evento.type == pygame.QUIT or (evento.type == pygame.KEYDOWN and evento.key == pygame.K_ESCAPE):
+            ejecutando = False
 
-# Mostrar la flor con el tamaño dinámico corregido
-st.markdown(
-    f"""
-    <div style="text-align: center; margin: 20px 0;">
-        <span style="font-size: {tamano_flor}px; transition: all 1s ease-in-out; display: inline-block;">🌹</span>
-    </div>
-    """, 
-    unsafe_allow_html=True  # 👈 Corrección aplicada aquí
-)
+    # 1. Cálculo estricto del tiempo transcurrido
+    milisegundos_totales = pygame.time.get_ticks() - tiempo_inicial
+    segundos_totales = milisegundos_totales // 1000
+    
+    dias = segundos_totales // 86400
+    horas = (segundos_totales % 86400) // 3600
+    minutos = (segundos_totales % 3600) // 60
+    segundos = segundos_totales % 60
 
-st.write("---")
-st.write("Te amo cada día más. Gracias por estar a mi lado. 💕")
+    # 2. Trigger lógico: Si cambió el segundo actual, nacen hojas
+    if segundos_totales > ultimo_segundo_registrado:
+        agregar_hojas()
+        ultimo_segundo_registrado = segundos_totales
+
+    # 3. Renderizar el tronco estático del Cerezo Gigante
+    for inicio, fin, grosor in lineas_tronco:
+        pygame.draw.line(pantalla, MARRON_TRONCO, inicio, fin, grosor)
+
+    # 4. Renderizar y actualizar el crecimiento orgánico de las hojas
+    for hoja in hojas:
+        if hoja["size"] < hoja["max_size"]:
+            hoja["size"] += 0.2  # Crecimiento progresivo fluido animado
+        pygame.draw.circle(pantalla, hoja["color"], (int(hoja["pos"][0]), int(hoja["pos"][1])), int(hoja["size"]))
+
+    # 5. Renderizar el contador puro (Sin etiquetas de texto, solo números flotantes)
+    fuente = pygame.font.SysFont("monospace", 65, bold=True)
+    string_contador = f"{dias:02d}:{horas:02d}:{minutos:02d}:{segundos:02d}"
+    superficie_texto = fuente.render(string_contador, True, BLANCO)
+    
+    # Posicionar contador centrado en la zona superior de la pantalla
+    pantalla.blit(superficie_texto, (ANCHO // 2 - superficie_texto.get_width() // 2, 50))
+
+    pygame.display.flip()
+    reloj.tick(60)  # Forzar a 60 fotogramas por segundo estables
+
+pygame.quit()
+sys.exit()
